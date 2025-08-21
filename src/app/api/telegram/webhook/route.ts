@@ -375,7 +375,7 @@ async function getTargetUser(bot: TelegramBot, message: TelegramBot.Message): Pr
 
 
 async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx: RequestContext) {
-    const { from, text } = message;
+    const { from, text, chat } = message;
     if (!from || !text) return;
 
     try {
@@ -481,66 +481,27 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
         }
 
         // --- 2. Handle /start command in private chat ---
-        if (isCommand(text, '/start')) {
-            if (!ctx.isPrivateChat) return;
+        if (isCommand(text, '/start') && ctx.isPrivateChat) {
             
-            const startParam = text.split(' ')[1];
-            if (!startParam) {
-                await bot.sendMessage(ctx.chatId, "Welcome! To join a project, you need a special invite link.");
-                return;
-            }
+            // Extract user data from the message
+            const { id, first_name, last_name, username } = from;
+            const userData = { id, first_name, last_name, username };
 
-            const [type, ...params] = startParam.split('_');
-            
-            let targetProjectId: string | undefined;
-            if (type === 'verify') {
-                targetProjectId = params[0];
-            } else {
-                targetProjectId = startParam;
-            }
-            
-            if (!targetProjectId) {
-                await bot.sendMessage(ctx.chatId, "This link seems to be invalid or expired.");
-                return;
-            }
-
-            const banInfo = await db.getBanInfo(targetProjectId, ctx.userId);
-            if (banInfo) {
-                const thirtyDaysInMillis = 30 * 24 * 60 * 60 * 1000;
-                const timeSinceBan = new Date().getTime() - banInfo.bannedAt.getTime();
-                if (timeSinceBan < thirtyDaysInMillis) {
-                    await bot.sendMessage(ctx.chatId, "❌ Your account is temporarily suspended from this project.");
-                    return;
-                } else {
-                    await db.unbanUser(targetProjectId, ctx.userId);
-                }
-            }
-
-            if (type === 'verify') {
-                const [projectId, targetUserId, originalChatId] = params;
-                if (!projectId || !targetUserId || !originalChatId) {
-                     await bot.sendMessage(ctx.chatId, "This verification link is invalid or expired.");
-                     return;
-                }
-                const { correctEmoji, inlineOptions } = generateCaptcha();
-                const captchaMessage = `Please select the ${correctEmoji} emoji to prove you're not a bot.`;
-                const keyboard = { inline_keyboard: [inlineOptions.map(emoji => ({ text: emoji, callback_data: `captcha_${emoji}` }))] };
+            try {
+                // Save user to the database
+                await db.createOrUpdateUser(userData);
                 
-                await db.setUserSession(ctx.userId, { action: 'awaiting_bouncer_captcha', projectId: projectId, correctEmoji, originalChatId: Number(originalChatId) });
-                await bot.sendMessage(ctx.chatId, captchaMessage, { reply_markup: keyboard });
+                // Invoke the handleNewUser flow to send the welcome message
+                await handleNewUser({
+                     chat: { id: chat.id, title: chat.title },
+                     new_chat_members: [from], // Treat the user as a new member for the flow
+                     isVerified: false, // This isn't relevant for a direct /start
+                     projectId: 'default' // A default or placeholder project
+                }, bot);
 
-            } else { // Gatekeeper Flow
-                const projectSettings = await db.getProjectSettings(targetProjectId);
-                if (!projectSettings) {
-                    await bot.sendMessage(ctx.chatId, "This project does not seem to exist.");
-                    return;
-                }
-                const { correctEmoji, inlineOptions } = generateCaptcha();
-                const welcomeText = (projectSettings.welcomeMessage || "Welcome! Please solve the CAPTCHA to get invite links.").split('.')[0];
-                const captchaMessage = `${welcomeText}\n\nPlease select the ${correctEmoji} emoji to prove you're not a bot.`;
-                const keyboard = { inline_keyboard: [inlineOptions.map(emoji => ({ text: emoji, callback_data: `captcha_${emoji}`}))] };
-                await db.setUserSession(ctx.userId, { action: 'awaiting_gatekeeper_captcha', projectId: targetProjectId, correctEmoji });
-                await bot.sendMessage(ctx.chatId, captchaMessage, { reply_markup: keyboard });
+            } catch (error) {
+                 console.error(`Error handling /start command for user ${id}:`, error);
+                 await bot.sendMessage(chat.id, "Sorry, I couldn't get you set up. Please try again later.");
             }
             return;
         }
@@ -739,7 +700,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
         }
         
         // --- 6. Handle non-admin messages (e.g., blacklist check) ---
-        if (!isAdmin && ctx.projectId && ctx.effectiveSettings && Array.isArray(ctx.effectiveSettings.blacklistedWords) && ctx.effectiveSettings.blacklistedWords.length > 0) {
+        if (!isAdmin && ctx.projectId && ctx.effectiveSettings?.blacklistedWords && ctx.effectiveSettings.blacklistedWords.length > 0) {
             const blacklist = ctx.effectiveSettings.blacklistedWords;
             const lowerCaseText = text.toLowerCase();
             
@@ -1029,3 +990,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to process update', details: errorMessage }, { status: 500 });
   }
 }
+
+    

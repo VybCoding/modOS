@@ -1,3 +1,4 @@
+
 /**
  * @file This file is the single source of truth for all database interactions.
  * It abstracts the Firestore logic away from the main application logic.
@@ -49,6 +50,15 @@ export type GroupInfo = {
     chatId: number;
 }
 
+export type UserData = {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    firstSeenAt?: FieldValue;
+    lastSeenAt?: FieldValue;
+}
+
 // --- COLLECTION REFERENCES ---
 const projectsCol = db.collection('projects');
 const groupsCol = db.collection('groups');
@@ -60,7 +70,19 @@ const blacklistWarningsCol = (projectId: string) => projectsCol.doc(projectId).c
 const verificationAttemptsCol = (projectId: string) => projectsCol.doc(projectId).collection('verification_attempts');
 const sessionsCol = db.collection('user_sessions');
 const locksCol = db.collection('group_locks');
+const usersCol = db.collection('users');
 
+
+// --- USER FUNCTIONS ---
+
+export async function createOrUpdateUser(userData: UserData): Promise<void> {
+    const userRef = usersCol.doc(String(userData.id));
+    await userRef.set({
+        ...userData,
+        lastSeenAt: FieldValue.serverTimestamp(),
+        firstSeenAt: FieldValue.serverTimestamp(), // This will only be set on creation
+    }, { merge: true });
+}
 
 // --- PROJECT & GROUP FUNCTIONS ---
 
@@ -316,3 +338,5 @@ export async function deleteUserData(projectId: string, userId: number): Promise
 
 // Make the initialized services available to other server-side files
 export { db, adminAuth };
+
+    

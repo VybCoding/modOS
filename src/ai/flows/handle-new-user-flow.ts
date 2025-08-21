@@ -74,8 +74,11 @@ const handleNewUserFlow = ai.defineFlow(
         } catch (error) {
           console.error(`Failed to welcome pre-verified user @${username}:`, error);
         }
+      } else if (projectId === 'default' && chat.title === undefined) {
+          // Scenario 2: This is a /start command in a private chat.
+          await bot.sendMessage(chatId, "Welcome to modOS! I'm ready to help you manage your groups.");
       } else {
-        // Scenario 2: User is NOT verified. Restrict, then DM.
+        // Scenario 3: User is NOT verified in a group. Restrict, then DM.
         try {
           // 1. Instantly restrict permissions (jail the user)
           await bot.restrictChatMember(chatId, user.id, {
@@ -125,3 +128,5 @@ const handleNewUserFlow = ai.defineFlow(
     }
   }
 );
+
+    
