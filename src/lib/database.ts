@@ -75,13 +75,27 @@ const usersCol = db.collection('users');
 
 // --- USER FUNCTIONS ---
 
-export async function createOrUpdateUser(userData: UserData): Promise<void> {
+export async function createOrUpdateUser(userData: Omit<UserData, 'firstSeenAt' | 'lastSeenAt'>): Promise<void> {
     const userRef = usersCol.doc(String(userData.id));
-    await userRef.set({
-        ...userData,
-        lastSeenAt: FieldValue.serverTimestamp(),
-        firstSeenAt: FieldValue.serverTimestamp(), // This will only be set on creation
-    }, { merge: true });
+    // Set the last seen timestamp on every update.
+    // Use a transaction to safely set `firstSeenAt` only once.
+    await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) {
+            // Document doesn't exist, this is a new user.
+            transaction.set(userRef, {
+                ...userData,
+                firstSeenAt: FieldValue.serverTimestamp(),
+                lastSeenAt: FieldValue.serverTimestamp(),
+            });
+        } else {
+            // Document exists, just update lastSeenAt.
+            transaction.update(userRef, {
+                ...userData,
+                lastSeenAt: FieldValue.serverTimestamp(),
+            });
+        }
+    });
 }
 
 // --- PROJECT & GROUP FUNCTIONS ---

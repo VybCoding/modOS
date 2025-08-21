@@ -340,14 +340,19 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
 function isCommand(text: string, command: string): boolean {
     const botUsername = process.env.BOT_USERNAME;
     if (!text || !botUsername) return false;
+    // Split on space to get the command part, and on @ to separate command from bot username
     const commandPart = text.split(' ')[0];
     const parts = commandPart.split('@');
     const baseCommand = parts[0]; 
     const targetBot = parts[1];
 
+    // Check if the base command matches
     if (baseCommand !== command) return false;
+
+    // If a bot username is specified, it must match our bot's username
     if (targetBot && targetBot !== botUsername) return false;
 
+    // If we're here, it's a valid command for our bot
     return true;
 }
 
@@ -990,5 +995,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to process update', details: errorMessage }, { status: 500 });
   }
 }
-
-    

@@ -12,6 +12,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import type TelegramBot from 'node-telegram-bot-api';
 import { sendAndDelete } from '@/lib/bot-utils';
+import * as db from '@/lib/database';
 
 // Zod schema for a Telegram user
 const TelegramUserSchema = z.object({
@@ -76,6 +77,7 @@ const handleNewUserFlow = ai.defineFlow(
         }
       } else if (projectId === 'default' && chat.title === undefined) {
           // Scenario 2: This is a /start command in a private chat.
+          // The user data will be saved by the webhook handler before this flow is called.
           await bot.sendMessage(chatId, "Welcome to modOS! I'm ready to help you manage your groups.");
       } else {
         // Scenario 3: User is NOT verified in a group. Restrict, then DM.
@@ -128,5 +130,3 @@ const handleNewUserFlow = ai.defineFlow(
     }
   }
 );
-
-    
