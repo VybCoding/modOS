@@ -1,10 +1,9 @@
-
 /**
  * @file This file is a dedicated data logging service.
  * It is responsible for capturing structured event data for analytics and reporting.
  */
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getDb } from './services';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // --- TYPES ---
 
@@ -18,16 +17,6 @@ export type ModerationEvent = {
     details?: string; // e.g., "Muted for 1h"
 };
 
-// --- INITIALIZATION ---
-
-if (!getApps().length) {
-    // This check is redundant if database.ts is always imported first,
-    // but it provides safety if this module is used independently.
-    initializeApp();
-}
-const db = getFirestore();
-const logsCol = db.collection('moderation_logs');
-
 /**
  * Logs a moderation event to a persistent data store (e.g., Firestore).
  * This data can be used for generating reports, creating audit trails,
@@ -36,6 +25,8 @@ const logsCol = db.collection('moderation_logs');
  * @param event The structured moderation event to log.
  */
 export async function logModerationEvent(event: Omit<ModerationEvent, 'timestamp'>): Promise<void> {
+    const db = await getDb();
+    const logsCol = db.collection('moderation_logs');
     const logEntry = {
         ...event,
         timestamp: new Date(), // Set timestamp at the time of logging
@@ -56,6 +47,8 @@ export async function logModerationEvent(event: Omit<ModerationEvent, 'timestamp
  * @returns A promise that resolves to an array of moderation events.
  */
 export async function getLogsForProject(projectId: string, since: Date): Promise<ModerationEvent[]> {
+    const db = await getDb();
+    const logsCol = db.collection('moderation_logs');
     const snapshot = await logsCol
       .where('projectId', '==', projectId)
       .where('timestamp', '>=', since)
@@ -71,7 +64,7 @@ export async function getLogsForProject(projectId: string, since: Date): Promise
         const data = doc.data();
         return {
             ...data,
-            timestamp: (data.timestamp as FirebaseFirestore.Timestamp).toDate(),
+            timestamp: (data.timestamp as Timestamp).toDate(),
         } as ModerationEvent;
     });
 }

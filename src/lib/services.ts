@@ -56,6 +56,4 @@ export const getAdminAuth = async (): Promise<Auth> => {
     return getAuth(app);
 };
 
-// For direct use in other files that might need the app instance itself
-export const db = getFirestore();
-export const adminAuth = getAuth();
+// The db and adminAuth exports are removed to enforce the use of the async getters.

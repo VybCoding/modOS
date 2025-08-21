@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @file This file is the single source of truth for securely accessing secrets.
@@ -7,7 +6,15 @@
  */
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
-const client = new SecretManagerServiceClient();
+let client: SecretManagerServiceClient | null = null;
+
+function getClient() {
+    if (!client) {
+        client = new SecretManagerServiceClient();
+    }
+    return client;
+}
+
 const secretCache = new Map<string, string>();
 
 /**
@@ -31,6 +38,7 @@ export async function getSecret(secretName: string): Promise<string | null> {
   const secretPath = `projects/${projectId}/secrets/${secretName}/versions/latest`;
 
   try {
+    const client = getClient();
     const [version] = await client.accessSecretVersion({
       name: secretPath,
     });
