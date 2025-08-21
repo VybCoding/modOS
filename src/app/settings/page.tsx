@@ -118,19 +118,14 @@ export default function SetupBotPage() {
     const result = await saveSettings(data);
     if (result.success) {
       toast({
-        title: (
-          <div className="flex items-center gap-2">
-            <Rocket className="h-5 w-5 text-primary" />
-            <span className="font-bold">Project Settings Saved!</span>
-          </div>
-        ),
+        title: 'Project Settings Saved!',
         description: result.message || 'Your settings have been saved and the bot is active.',
       });
       // Clear the token field after successful submission for security
       form.reset({ ...data, telegramBotToken: '' });
     } else {
       const errorMessage =
-        result.error?._form?.[0] ?? 'An unexpected error occurred.';
+        (result.error as any)?._form?.[0] ?? 'An unexpected error occurred.';
       toast({
         title: 'Error',
         description: errorMessage,

@@ -19,7 +19,7 @@ type ReportingInput = z.infer<typeof ReportingInputSchema>;
 const ReportingOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
-  reportContent?: string,
+  reportContent: z.string().optional(),
 });
 
 

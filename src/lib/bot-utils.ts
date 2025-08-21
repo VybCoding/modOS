@@ -13,7 +13,7 @@ export async function sendAndDelete(bot: TelegramBot, chatId: number, text: stri
     try {
         const sentMessage = await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
         setTimeout(() => {
-            bot.deleteMessage(chatId, sentMessage.message_id.toString()).catch(err => {
+            bot.deleteMessage(chatId, sentMessage.message_id).catch(err => {
                 // It's common for a message to be deleted by an admin before the timeout, so we only log other errors.
                 if (!String(err).includes('message to delete not found')) {
                     console.error(JSON.stringify({
