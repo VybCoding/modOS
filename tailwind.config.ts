@@ -1,3 +1,4 @@
+
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -72,7 +73,7 @@ const config: Config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
        fontFamily: {
-        body: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
       },
     },
   },
