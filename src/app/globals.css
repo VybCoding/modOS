@@ -1,66 +1,81 @@
-@import "tailwindcss/theme";
 @import "tailwindcss/base";
+@import "tailwindcss/components";
 @import "tailwindcss/utilities";
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
 
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 168 43% 51%;
+
+    --primary: 211 43% 51%; /* Dark Blue - #30475E */
     --primary-foreground: 210 40% 98%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 210 40% 9.8%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 211 33% 28%;
+
+    --accent: 168 44% 51%; /* Teal - #46B29D */
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 168 43% 51%;
+    --ring: 211 43% 51%;
+
     --radius: 0.5rem;
   }
+
   .dark {
-    --background: 0 0% 10%; /* #1A1A1A */
-    --foreground: 0 0% 98%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 168 43% 51%; /* #46B29D */
-    --primary-foreground: 0 0% 10%;
-    --secondary: 211 33% 28%; /* #30475E */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 211 33% 22%;
-    --accent-foreground: 0 0% 98%;
+    --background: 224 71% 4%; /* Very Dark Gray - #1A1A1A */
+    --foreground: 210 40% 98%;
+
+    --card: 224 71% 6%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 211 43% 28%; /* Dark Blue - #30475E */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 168 44% 51%; /* Teal - #46B29D */
+    --accent-foreground: 224 71% 4%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 168 43% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 168 44% 51%;
+    
     --chart-1: 168 43% 51%;
     --chart-2: 211 33% 28%;
     --chart-3: 180 50% 60%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar-background: 0 0% 10%;
+    --sidebar-background: 224 71% 4%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 168 43% 51%;
     --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent: 224 71% 8%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 20%;
+    --sidebar-border: 224 71% 10%;
     --sidebar-ring: 168 43% 51%;
   }
 }
