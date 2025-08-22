@@ -23,8 +23,8 @@ async function initializeFirebaseAdmin() {
     return getApps()[0];
   }
 
-  // For local development, GOOGLE_APPLICATION_CREDENTIALS_JSON is fetched from a local .env file
-  // and is available in process.env. For production, it's a secret.
+  // Check for local env variable first. If it's not there, we're likely in production
+  // and need to fetch from Secret Manager. The secret name must match what's in apphosting.yaml.
   const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || await getSecret('GOOGLE_APPLICATION_CREDENTIALS_JSON');
   
   if (serviceAccountJson) {
@@ -34,7 +34,10 @@ async function initializeFirebaseAdmin() {
       });
   }
   
-  // In the deployed App Hosting environment, initializeApp() discovers credentials automatically.
+  // In the deployed App Hosting environment where secrets aren't set as env vars,
+  // initializeApp() can sometimes discover credentials automatically if the service account has the right IAM roles.
+  // This provides a fallback.
+  console.log("Initializing Firebase Admin with default credentials.");
   return initializeApp();
 }
 
