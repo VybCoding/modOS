@@ -1,18 +1,22 @@
-
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: ['class'],
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  prefix: "",
   theme: {
-    extend: {
-      fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
       },
+    },
+    extend: {
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -47,16 +51,6 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))',
-        },
       },
       borderRadius: {
         lg: `var(--radius)`,
@@ -76,6 +70,10 @@ const config: Config = {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+      },
+       fontFamily: {
+        body: ['Inter', 'sans-serif'],
+        headline: ['Inter', 'sans-serif'],
       },
     },
   },
