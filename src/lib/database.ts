@@ -1,3 +1,4 @@
+
 /**
  * @file This file is the single source of truth for all database interactions.
  * It abstracts the Firestore logic away from the main application logic.
@@ -49,6 +50,56 @@ export type GroupInfo = {
     chatId: number;
 }
 
+feature/start-command
+export type UserData = {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    firstSeenAt?: FieldValue;
+    lastSeenAt?: FieldValue;
+}
+
+// --- COLLECTION REFERENCES ---
+const projectsCol = db.collection('projects');
+const groupsCol = db.collection('groups');
+const groupOverridesCol = db.collection('group_settings_overrides');
+const verifiedUsersCol = (projectId: string) => projectsCol.doc(projectId).collection('verified_users');
+const bannedUsersCol = (projectId: string) => projectsCol.doc(projectId).collection('banned_users');
+const warningCountsCol = (projectId: string) => projectsCol.doc(projectId).collection('warning_counts');
+const blacklistWarningsCol = (projectId: string) => projectsCol.doc(projectId).collection('blacklist_warnings');
+const verificationAttemptsCol = (projectId: string) => projectsCol.doc(projectId).collection('verification_attempts');
+const sessionsCol = db.collection('user_sessions');
+const locksCol = db.collection('group_locks');
+const usersCol = db.collection('users');
+
+
+// --- USER FUNCTIONS ---
+
+export async function createOrUpdateUser(userData: Omit<UserData, 'firstSeenAt' | 'lastSeenAt'>): Promise<void> {
+    const userRef = usersCol.doc(String(userData.id));
+    // Set the last seen timestamp on every update.
+    // Use a transaction to safely set `firstSeenAt` only once.
+    await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) {
+            // Document doesn't exist, this is a new user.
+            transaction.set(userRef, {
+                ...userData,
+                firstSeenAt: FieldValue.serverTimestamp(),
+                lastSeenAt: FieldValue.serverTimestamp(),
+            });
+        } else {
+            // Document exists, just update lastSeenAt.
+            transaction.update(userRef, {
+                ...userData,
+                lastSeenAt: FieldValue.serverTimestamp(),
+            });
+        }
+    });
+}
+
+ main
 // --- PROJECT & GROUP FUNCTIONS ---
 
 export async function isUserAdminOfAnyProject(userId: number): Promise<boolean> {
@@ -375,3 +426,12 @@ export async function deleteUserData(projectId: string, userId: number): Promise
     
     await batch.commit();
 }
+ feature/start-command
+
+
+// Make the initialized services available to other server-side files
+export { db, adminAuth };
+
+    
+
+ main

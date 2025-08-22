@@ -11,6 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getBot } from '@/lib/telegram';
 import { sendAndDelete } from '@/lib/bot-utils';
+import * as db from '@/lib/database';
 
 // Zod schema for a Telegram user
 const TelegramUserSchema = z.object({
@@ -72,8 +73,12 @@ const handleNewUserFlow = ai.defineFlow(
         } catch (error) {
           console.error(`Failed to welcome pre-verified user @${username}:`, error);
         }
+      } else if (projectId === 'default' && chat.title === undefined) {
+          // Scenario 2: This is a /start command in a private chat.
+          // The user data will be saved by the webhook handler before this flow is called.
+          await bot.sendMessage(chatId, "Welcome to modOS! I'm ready to help you manage your groups.");
       } else {
-        // Scenario 2: User is NOT verified. Restrict, then DM.
+        // Scenario 3: User is NOT verified in a group. Restrict, then DM.
         try {
           // 1. Instantly restrict permissions (jail the user)
           await bot.restrictChatMember(chatId, user.id, {
