@@ -29,9 +29,10 @@ export async function getSecret(secretName: string): Promise<string | null> {
     return secretCache.get(secretName)!;
   }
 
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+  // Use the correct environment variable for the project ID.
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   if (!projectId) {
-    console.error("CRITICAL: GOOGLE_CLOUD_PROJECT environment variable is not set.");
+    console.error("CRITICAL: NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set.");
     return null;
   }
 
@@ -54,7 +55,7 @@ export async function getSecret(secretName: string): Promise<string | null> {
   } catch (error: any) {
     // Specifically handle the case where the secret is not found without logging a scary error.
     if (error.code === 5) { // gRPC code for NOT_FOUND
-      console.warn(`Secret ${secretName} not found in Secret Manager.`);
+      console.warn(`Secret ${secretName} not found in Secret Manager for project ${projectId}.`);
     } else {
       console.error(`Failed to access secret ${secretName}:`, error);
     }
