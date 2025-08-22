@@ -23,10 +23,16 @@ async function initializeFirebaseAdmin() {
     return getApps()[0];
   }
 
-  // Check for local env variable first. If it's not there, we're likely in production
-  // and need to fetch from Secret Manager. The secret name must match what's in apphosting.yaml.
-  const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || await getSecret('GOOGLE_APPLICATION_CREDENTIALS_JSON');
+  // Check for local env variable first (development). If it's not there, we're likely in production
+  // and need to fetch from Secret Manager.
+  let serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   
+  if (!serviceAccountJson) {
+      console.log("Local service account credentials not found. Fetching from Secret Manager...");
+      // The secret name must match what was created in Secret Manager.
+      serviceAccountJson = await getSecret('modos-service-account-key');
+  }
+
   if (serviceAccountJson) {
       const serviceAccount = JSON.parse(serviceAccountJson);
       return initializeApp({
@@ -37,7 +43,7 @@ async function initializeFirebaseAdmin() {
   // In the deployed App Hosting environment where secrets aren't set as env vars,
   // initializeApp() can sometimes discover credentials automatically if the service account has the right IAM roles.
   // This provides a fallback.
-  console.log("Initializing Firebase Admin with default credentials.");
+  console.log("Initializing Firebase Admin with default application credentials.");
   return initializeApp();
 }
 
