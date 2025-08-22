@@ -25,7 +25,7 @@ export type ModerationEvent = {
  * @param event The structured moderation event to log.
  */
 export async function logModerationEvent(event: Omit<ModerationEvent, 'timestamp'>): Promise<void> {
-    const db = await getDb();
+    const db = getDb();
     const logsCol = db.collection('moderation_logs');
     const logEntry = {
         ...event,
@@ -47,7 +47,7 @@ export async function logModerationEvent(event: Omit<ModerationEvent, 'timestamp
  * @returns A promise that resolves to an array of moderation events.
  */
 export async function getLogsForProject(projectId: string, since: Date): Promise<ModerationEvent[]> {
-    const db = await getDb();
+    const db = getDb();
     const logsCol = db.collection('moderation_logs');
     const snapshot = await logsCol
       .where('projectId', '==', projectId)

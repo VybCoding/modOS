@@ -23,22 +23,8 @@ runConfig:
   # These are BACKEND secrets securely referenced from Secret Manager
   # The `secret` value must exactly match the name you created in Secret Manager.
   secretEnv:
-    - key: TG_BOT_TOKEN
-      secret: TG_BOT_TOKEN
-    - key: BOT_USERNAME
-      secret: BOT_USERNAME
-    - key: SENDER_EMAIL_HOST
-      secret: SENDER_EMAIL_HOST
-    - key: SENDER_EMAIL_PORT
-      secret: SENDER_EMAIL_PORT
-    - key: SENDER_EMAIL_USER
-      secret: SENDER_EMAIL_USER
-    - key: SENDER_EMAIL_APP_PASSWORD
-      secret: SENDER_EMAIL_APP_PASSWORD
-    - key: FEEDBACK_RECIPIENT_EMAIL
-      secret: FEEDBACK_RECIPIENT_EMAIL
-    - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
-      secret: GOOGLE_APPLICATION_CREDENTIALS_JSON
+  - secret: "modos-service-account-key"
+    env: NAME_OF_VARIABLE_IN_CODE
 
 # Allow public, unauthenticated traffic to the web app
 ingress: all

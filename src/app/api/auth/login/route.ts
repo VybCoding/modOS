@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
     
     // 4. Data is valid and user is an admin. Create a custom Firebase token.
-    const adminAuth = await getAdminAuth();
+    const adminAuth = getAdminAuth();
     const customToken = await adminAuth.createCustomToken(String(id));
 
     return NextResponse.json({ success: true, customToken });

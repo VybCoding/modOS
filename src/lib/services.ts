@@ -1,68 +1,30 @@
-
 /**
  * @file This file is the single source of truth for all backend service initializations.
  * It enforces a "singleton" pattern, ensuring that services like Firebase Admin
- * are only instantiated ONCE throughout the entire application lifecycle. This prevents conflicts,
- * memory leaks, and ensures consistent behavior.
- *
- * All other files in the application that need to use these services MUST import them from this file.
+ * are only instantiated ONCE throughout the entire application lifecycle.
  */
 
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
-import { getSecret } from './secrets';
-
 
 // --- Firebase Admin SDK Initialization ---
-// This is the definitive singleton pattern for the Firebase Admin App.
+
 let app: App;
 
-async function initializeFirebaseAdmin() {
-  if (getApps().length > 0) {
-    return getApps()[0];
-  }
-
-  // Check for local env variable first (development). If it's not there, we're likely in production
-  // and need to fetch from Secret Manager.
-  let serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  
-  if (!serviceAccountJson) {
-      console.log("Local service account credentials not found. Fetching from Secret Manager...");
-      // The secret name must match what was created in Secret Manager.
-      serviceAccountJson = await getSecret('modos-service-account-key');
-  }
-
-  if (serviceAccountJson) {
-      const serviceAccount = JSON.parse(serviceAccountJson);
-      return initializeApp({
-        credential: cert(serviceAccount),
-      });
-  }
-  
-  // In the deployed App Hosting environment where secrets aren't set as env vars,
-  // initializeApp() can sometimes discover credentials automatically if the service account has the right IAM roles.
-  // This provides a fallback.
-  console.log("Initializing Firebase Admin with default application credentials.");
-  return initializeApp();
+// In a Google Cloud environment like App Hosting, initializeApp() with no arguments
+// automatically discovers the necessary credentials. This is the standard pattern.
+if (getApps().length === 0) {
+  app = initializeApp();
+} else {
+  app = getApps()[0];
 }
 
-
-// We cannot initialize the app at the top level because it needs to be async.
-// Instead, we export a promise that resolves to the app.
-// Downstream files can then `await` this promise.
-const appPromise: Promise<App> = initializeFirebaseAdmin();
-
-
-// Export functions that provide the services, ensuring the app is initialized first.
-export const getDb = async (): Promise<Firestore> => {
-    const app = await appPromise;
-    return getFirestore(app);
+// Export functions that provide the initialized services directly.
+export function getDb(): Firestore {
+  return getFirestore(app);
 };
 
-export const getAdminAuth = async (): Promise<Auth> => {
-    const app = await appPromise;
-    return getAuth(app);
+export function getAdminAuth(): Auth {
+  return getAuth(app);
 };
-
-// The db and adminAuth exports are removed to enforce the use of the async getters.
