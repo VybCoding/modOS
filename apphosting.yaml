@@ -23,6 +23,8 @@ runConfig:
   # These are BACKEND secrets securely referenced from Secret Manager
   # The `secret` value must exactly match the name you created in Secret Manager.
   secretEnv:
+  - secret: "TG_BOT_TOKEN"
+    env: "TG_BOT_TOKEN"
   - secret: "modos-service-account-key"
     env: NAME_OF_VARIABLE_IN_CODE
 
