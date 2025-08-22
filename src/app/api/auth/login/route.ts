@@ -1,58 +1,61 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
-import * as db from '@/lib/database';
-import { getAdminAuth } from '@/lib/services';
+import { getAdminAuth, createOrUpdateUser, getProjectByChatId, isUserAdminOfAnyProject } from '@/lib/database';
 import { getSecret } from '@/lib/secrets';
+import crypto from 'crypto';
+
+// Define the structure of the Telegram user data
+interface TelegramUserData {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const data: TelegramUserData = await req.json();
+
     const botToken = await getSecret('TG_BOT_TOKEN');
-    
     if (!botToken) {
-      console.error('Authentication failed: TG_BOT_TOKEN secret is not configured.');
-      return NextResponse.json({ error: 'Server configuration error: Cannot verify login.' }, { status: 500 });
+      console.error("CRITICAL: TG_BOT_TOKEN secret is not configured.");
+      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
     }
 
-    const body = await req.json();
-    const { id, first_name, username, auth_date, hash } = body;
-
-    // 1. Verify the data is from Telegram
-    const dataCheckString = Object.entries(body)
-      .filter(([key]) => key !== 'hash')
-      .map(([key, value]) => `${key}=${value}`)
+    const dataCheckString = Object.keys(data)
+      .filter((key) => key !== 'hash')
       .sort()
+      .map((key) => `${key}=${data[key as keyof Omit<TelegramUserData, 'hash'>]}`)
       .join('\n');
 
     const secretKey = crypto.createHash('sha256').update(botToken).digest();
-    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString);
+    const hash = hmac.digest('hex');
 
-    if (hmac !== hash) {
-      return NextResponse.json({ error: 'Invalid hash' }, { status: 401 });
+    if (hash !== data.hash) {
+      return NextResponse.json({ error: 'Invalid hash. Cannot verify login.' }, { status: 403 });
     }
 
-    // 2. Check if auth_date is recent (e.g., within 5 minutes)
-    const now = Math.floor(Date.now() / 1000);
-    if (now - auth_date > 300) {
-      return NextResponse.json({ error: 'Authentication expired' }, { status: 401 });
-    }
+    const { id, first_name, last_name, username } = data;
 
-    // 3. Check if user is an admin of any project in our DB
-    const isAdmin = await db.isUserAdminOfAnyProject(id);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized. You are not an administrator of any configured project.' }, { status: 403 });
-    }
+    // Create or update the user in the database
+    await createOrUpdateUser({ id, first_name, last_name, username });
     
-    // 4. Data is valid and user is an admin. Create a custom Firebase token.
-    const adminAuth = getAdminAuth();
-    const customToken = await adminAuth.createCustomToken(String(id));
+    // Check if the user is an admin of any project
+    const isAdmin = await isUserAdminOfAnyProject(id);
+    const claims = { isAdmin };
 
-    return NextResponse.json({ success: true, customToken });
+    const adminAuth = getAdminAuth();
+    const customToken = await adminAuth.createCustomToken(String(id), claims);
+
+    return NextResponse.json({ customToken });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error('Login error:', errorMessage);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Login API Error:', error);
     return NextResponse.json({ error: 'Internal Server Error', details: errorMessage }, { status: 500 });
   }
 }
