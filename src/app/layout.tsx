@@ -1,11 +1,14 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'modOS Telegram Moderator Bot',
-  description: 'Admin dashboard for your modOS Telegram Moderator Bot',
+  title: 'DeekFi Guardian',
+  description:
+    'The ultimate gatekeeper for your Telegram community, powered by modOS.',
 };
 
 export default function RootLayout({
@@ -15,15 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark font-sans" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased">
+      <body className={`${inter.variable} antialiased`}>
         {children}
         <Toaster />
       </body>
