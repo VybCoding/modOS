@@ -1,4 +1,3 @@
-
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -56,7 +55,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
             const groupName = chatInfo.title || `Group ${newChatId}`;
             const newProjectId = await db.createNewProject(Number(newChatId), groupName, callbackUserId);
 
-            await bot.deleteMessage(callbackChatId, messageId.toString());
+            await bot.deleteMessage(callbackChatId, messageId);
             // **FIX**: We must refetch the settings and update the context *after* creating the project.
             const newEffectiveSettings = await db.getEffectiveSettings(newProjectId, callbackChatId);
             const newCtx: RequestContext = { ...ctx, chatId: callbackChatId, projectId: newProjectId, effectiveSettings: newEffectiveSettings };
@@ -67,7 +66,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
             const newChatId = params[2];
             await db.clearProjectCreationLock(Number(newChatId));
 
-            await bot.deleteMessage(callbackChatId, messageId.toString());
+            await bot.deleteMessage(callbackChatId, messageId);
             await bot.sendMessage(callbackChatId, "No problem. If you change your mind, just type /settings again.");
             return;
         }
@@ -76,7 +75,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
         // If we are not creating a project, and there's no project ID in context, we can't continue.
         if (!ctx.projectId && !session?.projectId) {
              await bot.answerCallbackQuery(callbackQuery.id, { text: "This project context is missing. Please start over.", show_alert: true });
-             await bot.deleteMessage(callbackChatId, messageId.toString()).catch(() => {});
+             await bot.deleteMessage(callbackChatId, messageId).catch(() => {});
              return;
         }
 
@@ -86,7 +85,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
             const actionParams = params.slice(1);
             
             if (!ctx.isPrivateChat) {
-                const member = await bot.getChatMember(ctx.chatId, String(ctx.userId));
+                const member = await bot.getChatMember(ctx.chatId, ctx.userId);
                 const isAdmin = ['creator', 'administrator'].includes(member.status);
                 if (!isAdmin) {
                     await bot.answerCallbackQuery(callbackQuery.id, { text: "You must be an admin to change settings.", show_alert: true });
@@ -157,7 +156,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
             } else if (action === 'health') {
                 await bot.answerCallbackQuery(callbackQuery.id, { text: "Running health check..." });
                 const botId = (await bot.getMe()).id;
-                const chatMember = await bot.getChatMember(ctx.chatId, String(botId));
+                const chatMember = await bot.getChatMember(ctx.chatId, botId);
 
                 let statusReport = "🩺 **Bot Health Status**\n\n";
                 let allOk = true;
@@ -224,7 +223,7 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
                 await db.setUserSession(ctx.userId, { action: 'awaiting_group_rules_message', chatId: callbackChatId, messageId: messageId, projectId: ctx.projectId });
                 await bot.editMessageText(text, { chat_id: callbackChatId, message_id: messageId, parse_mode: 'Markdown' });
             } else if (action === 'done') {
-                await bot.deleteMessage(callbackChatId, messageId.toString());
+                await bot.deleteMessage(callbackChatId, messageId);
             } else if (action === 'back' && actionParams.join('_') === 'to_main_menu') {
                 await showMainMenu(bot, { ...ctx, chatId: callbackChatId }, 'Configure your project settings:', messageId);
             }
@@ -248,9 +247,18 @@ async function handleCallbackQuery(bot: TelegramBot, callbackQuery: TelegramBot.
                 
                 if (session.action === 'awaiting_bouncer_captcha' && originalChatId) {
                     await bot.restrictChatMember(originalChatId, callbackUserId, {
-                        can_send_messages: true, can_send_media_messages: true,
-                        can_send_polls: true, can_send_other_messages: true,
-                        can_add_web_page_previews: true,
+                        permissions: {
+                            can_send_messages: true,
+                            can_send_audios: true,
+                            can_send_documents: true,
+                            can_send_photos: true,
+                            can_send_videos: true,
+                            can_send_video_notes: true,
+                            can_send_voice_notes: true,
+                            can_send_polls: true,
+                            can_send_other_messages: true,
+                            can_add_web_page_previews: true,
+                        }
                     });
                     await bot.editMessageText("✅ Verification complete! You can now chat in the group.", { chat_id: callbackChatId, message_id: messageId, reply_markup: undefined });
                 } else { // Gatekeeper Flow
@@ -382,6 +390,8 @@ async function getTargetUser(bot: TelegramBot, message: TelegramBot.Message): Pr
 async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx: RequestContext) {
     const { from, text, chat } = message;
     if (!from || !text) return;
+    const member = await bot.getChatMember(ctx.chatId, from.id);
+    const isAdmin = ['creator', 'administrator'].includes(member.status);
 
     try {
         // --- 1. Handle user input awaiting a response (e.g., settings update) ---
@@ -392,7 +402,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             if (isCommand(text, '/cancel')) {
                 await db.clearUserSession(ctx.userId);
                 if (sessionChatId && sessionMessageId) {
-                    await bot.deleteMessage(sessionChatId, message.message_id.toString()).catch(() => {});
+                    await bot.deleteMessage(sessionChatId, message.message_id).catch(() => {});
                     await showMainMenu(bot, { ...ctx, chatId: sessionChatId }, "Operation cancelled. What would you like to do next?", sessionMessageId);
                 } else if (sessionChatId) {
                     await sendAndDelete(bot, sessionChatId, "Operation cancelled.");
@@ -472,7 +482,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 await db.clearUserSession(ctx.userId);
                 try {
                      if (ctx.isPrivateChat && message.message_id) {
-                       await bot.deleteMessage(ctx.chatId, message.message_id.toString());
+                       await bot.deleteMessage(ctx.chatId, message.message_id);
                     }
                 } catch (e) { console.warn("Could not delete user message after setting update.") }
                 
@@ -525,8 +535,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
         }
         
         // --- 5. Handle admin commands ---
-        const member = await bot.getChatMember(ctx.chatId, String(ctx.userId));
-        const isAdmin = ['creator', 'administrator'].includes(member.status);
+        const member = await bot.getChatMember(ctx.chatId, ctx.userId);
         if (isAdmin) {
             const targetUser = await getTargetUser(bot, message);
             const commandNeedsUser = ['/kick', '/ban', '/mute', '/unmute', '/warn', '/unverify'].some(cmd => isCommand(text, cmd));
@@ -538,7 +547,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             if (isCommand(text, '/kick')) {
                 if (!targetUser) return; 
                 try {
-                    await bot.kickChatMember(ctx.chatId, targetUser.id);
+                    await bot.banChatMember(ctx.chatId, targetUser.id);
                     await sendAndDelete(bot, ctx.chatId, `✅ @${targetUser.username || targetUser.first_name} has been kicked.`, 15);
                      if (ctx.projectId) await logger.logModerationEvent({
                         projectId: ctx.projectId,
@@ -589,7 +598,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 }
 
                 try {
-                    await bot.restrictChatMember(ctx.chatId, targetUser.id, { can_send_messages: false }, { until_date: untilDate });
+                    await bot.restrictChatMember(ctx.chatId, targetUser.id, { permissions: { can_send_messages: false }, until_date: untilDate });
                     await sendAndDelete(bot, ctx.chatId, `✅ @${targetUser.username || targetUser.first_name} has been muted for ${durationStr}.`, 15);
                     await logger.logModerationEvent({
                         projectId: ctx.projectId,
@@ -606,7 +615,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             } else if (isCommand(text, '/unmute')) {
                 if (!targetUser || !ctx.projectId) return;
                 try {
-                    await bot.restrictChatMember(ctx.chatId, targetUser.id, { can_send_messages: true, can_send_media_messages: true, can_send_other_messages: true, can_add_web_page_previews: true, can_send_polls: true });
+                    await bot.restrictChatMember(ctx.chatId, targetUser.id, { permissions: { can_send_messages: true, can_send_other_messages: true, can_add_web_page_previews: true, can_send_polls: true } });
                     await sendAndDelete(bot, ctx.chatId, `✅ @${targetUser.username || targetUser.first_name} has been unmuted.`, 15);
                     await logger.logModerationEvent({
                         projectId: ctx.projectId,
@@ -626,7 +635,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 const toId = message.message_id;
                 let count = 0;
                 for (let i = fromId; i <= toId; i++) {
-                    try { await bot.deleteMessage(ctx.chatId, i.toString()); count++; } catch(e) {}
+                    try { await bot.deleteMessage(ctx.chatId, i); count++; } catch(e) {}
                 }
                 await sendAndDelete(bot, ctx.chatId, `✅ Purged ${count} messages.`, 10);
                 return;
@@ -658,7 +667,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                     await sendAndDelete(bot, ctx.chatId, "You need to start this process from the /settings menu.", 10);
                     return;
                 }
-                const botMember = await bot.getChatMember(ctx.chatId, (await bot.getMe()).id.toString());
+                const botMember = await bot.getChatMember(ctx.chatId, (await bot.getMe()).id);
                 if (botMember.status !== 'administrator') {
                     await sendAndDelete(bot, ctx.chatId, "I must be an admin in this group to manage it.", 10);
                     return;
@@ -711,7 +720,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             
             for (const bannedWord of blacklist) {
                 if (lowerCaseText.includes(bannedWord)) {
-                    await bot.deleteMessage(ctx.chatId, message.message_id.toString());
+                    await bot.deleteMessage(ctx.chatId, message.message_id);
                     const newWarningCount = await db.incrementBlacklistWarnings(ctx.projectId, ctx.userId);
                     
                     await logger.logModerationEvent({
@@ -728,7 +737,7 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                     } else {
                         await db.resetBlacklistWarnings(ctx.projectId, ctx.userId);
                         const muteDuration = Math.floor(Date.now() / 1000) + (14 * 24 * 60 * 60); // 14 days
-                        await bot.restrictChatMember(ctx.chatId, ctx.userId, { can_send_messages: false }, { until_date: muteDuration });
+                        await bot.restrictChatMember(ctx.chatId, ctx.userId, { permissions: { can_send_messages: false }, until_date: muteDuration });
                         await sendAndDelete(bot, ctx.chatId, `🔇 @${from.username || from.first_name} has been muted for 14 days after a third warning for using forbidden words.`);
                         
                         await logger.logModerationEvent({
@@ -829,7 +838,7 @@ async function handleChatMemberUpdate(bot: TelegramBot, chatMember: TelegramBot.
         });
     }
 
-    if ((new_chat_member.status === 'member' || new_chat_member.status === 'restricted') && new_chat_member.old_chat_member.status === 'kicked') {
+    if ((new_chat_member.status === 'member' || new_chat_member.status === 'restricted') && chatMember.old_chat_member.status === 'kicked') {
          const wasBanned = await db.unbanUser(projectId, userId);
          if (wasBanned) {
              console.log(`User ${userId} was unbanned from chat ${chat.id}. Removing from ban list.`);
@@ -855,7 +864,7 @@ async function processNewUser(bot: TelegramBot, user: TelegramBot.User, ctx: Req
         
         if (timeSinceBan < thirtyDaysInMillis) {
             try {
-                await bot.kickChatMember(ctx.chatId, user.id);
+                await bot.banChatMember(ctx.chatId, user.id);
                 console.log(`Kicked user ${user.id} from chat ${ctx.chatId} due to active ban.`);
             } catch (kickError) {
                 console.error(JSON.stringify({
@@ -880,7 +889,7 @@ async function processNewUser(bot: TelegramBot, user: TelegramBot.User, ctx: Req
         new_chat_members: [user],
         isVerified: isVerified,
         projectId: ctx.projectId
-    }, bot);
+    });
 }
 
 export async function POST(req: NextRequest) {
@@ -900,7 +909,7 @@ export async function POST(req: NextRequest) {
     // Delete "user joined" / "user left" service messages automatically
     if (body.message && (body.message.new_chat_members || body.message.left_chat_member || body.message.new_chat_title)) {
         setTimeout(() => {
-            bot.deleteMessage(body.message.chat.id, body.message.message_id.toString()).catch(err => {
+            bot.deleteMessage(body.message.chat.id, body.message.message_id).catch(err => {
                  if (!String(err).includes('message to delete not found')) {
                      console.warn(JSON.stringify({
                         level: 'WARN', message: 'Failed to auto-delete service message',
@@ -958,7 +967,7 @@ export async function POST(req: NextRequest) {
       // Auto-delete slash commands in group chats to keep things clean.
       if (body.message.text && body.message.text.startsWith('/') && !isPrivateChat) {
         setTimeout(() => {
-            bot.deleteMessage(body.message.chat.id, body.message.message_id.toString()).catch((err) => {
+            bot.deleteMessage(body.message.chat.id, body.message.message_id).catch((err) => {
               if (!String(err).includes('message to delete not found')) {
                 console.warn(JSON.stringify({
                   level: 'WARN', message: 'Failed to delete user command message',

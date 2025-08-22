@@ -62,7 +62,7 @@ export default function FeedbackPage() {
     } else {
       toast({
         title: 'Error',
-        description: result.error?._form?.[0] ?? 'Something went wrong. Please try again.',
+        description: (result.error as any)?._form?.[0] ?? 'Something went wrong. Please try again.',
         variant: 'destructive',
       });
     }
