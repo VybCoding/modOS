@@ -772,6 +772,51 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 }
                 return;
             }
+
+            if (text.startsWith('+') || text.startsWith('-')) {
+                if (!targetUser) {
+                    return sendAndDelete(bot, ctx.chatId, 'Please reply to a user to modify their XP.', 10);
+                }
+                if (!ctx.projectId) {
+                     return sendAndDelete(bot, ctx.chatId, 'This command is not available in a group without a project.', 10);
+                }
+
+                const isAdding = text.startsWith('+');
+                const char = isAdding ? '+' : '-';
+                const count = text.split(char).length - 1;
+                const percentage = count * 0.1;
+
+                if (count > 10) {
+                    return sendAndDelete(bot, ctx.chatId, 'You can only modify XP by a maximum of 100% at a time (10 characters).', 15);
+                }
+
+                const projectUser = await db.getProjectUser(ctx.projectId, targetUser.id);
+                if (!projectUser) {
+                    return sendAndDelete(bot, ctx.chatId, `User @${targetUser.username || targetUser.first_name} has no XP record.`, 15);
+                }
+
+                const currentLevelXp = requiredXpForNextLevel(projectUser.level - 1);
+                const xpForLevel = requiredXpForNextLevel(projectUser.level) - currentLevelXp;
+                const xpChange = Math.floor(xpForLevel * percentage);
+                const finalXpChange = isAdding ? xpChange : -xpChange;
+
+                const newXp = Math.max(0, projectUser.xp + finalXpChange);
+
+                // Check for level changes
+                let newLevel = projectUser.level;
+                while (newXp >= requiredXpForNextLevel(newLevel)) {
+                    newLevel++;
+                }
+                while (newXp < requiredXpForNextLevel(newLevel - 1) && newLevel > 1) {
+                    newLevel--;
+                }
+
+                await db.updateProjectUser(ctx.projectId, targetUser.id, { xp: newXp, level: newLevel });
+
+                const actionText = isAdding ? 'increased' : 'decreased';
+                await sendAndDelete(bot, ctx.chatId, `✅ XP for @${targetUser.username || targetUser.first_name} has been ${actionText} by ${xpChange}. New XP: ${Math.floor(newXp)}, Level: ${newLevel}.`, 20);
+                return;
+            }
         }
         
         // --- 6. Handle non-admin messages (e.g., blacklist check) ---
