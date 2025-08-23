@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSettings } from './SettingsProvider';
+import { motion } from 'framer-motion';
 
 const fetcher = async ([url, token]: [string, string]) => {
     const res = await fetch(url, {
@@ -17,6 +18,13 @@ const fetcher = async ([url, token]: [string, string]) => {
     return res.json();
 };
 
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const MotionTableRow = motion(TableRow);
+
 function SimpleLeaderboardTable({ title, data }: { title: string, data: { username: string, count: number }[] }) {
     return (
         <Card>
@@ -24,22 +32,24 @@ function SimpleLeaderboardTable({ title, data }: { title: string, data: { userna
                 <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead className="text-right">Count</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.map((item) => (
-                            <TableRow key={item.username}>
-                                <TableCell>{item.username}</TableCell>
-                                <TableCell className="text-right">{item.count}</TableCell>
+                <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead className="text-right">Count</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((item) => (
+                                <MotionTableRow key={item.username} variants={rowVariants}>
+                                    <TableCell>{item.username}</TableCell>
+                                    <TableCell className="text-right">{item.count}</TableCell>
+                                </MotionTableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </motion.div>
             </CardContent>
         </Card>
     )
@@ -53,30 +63,32 @@ function ModeratorLeaderboardTable({ data }: { data: { username: string, total: 
                 <CardDescription>By total moderation actions</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="text-right">Bans</TableHead>
-                            <TableHead className="text-right">Kicks</TableHead>
-                            <TableHead className="text-right">Warnings</TableHead>
-                            <TableHead className="text-right">Deletions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.map((item) => (
-                            <TableRow key={item.username}>
-                                <TableCell>{item.username}</TableCell>
-                                <TableCell className="text-right">{item.total}</TableCell>
-                                <TableCell className="text-right">{item.banned}</TableCell>
-                                <TableCell className="text-right">{item.kicked}</TableCell>
-                                <TableCell className="text-right">{item.warnings}</TableCell>
-                                <TableCell className="text-right">{item.deletions}</TableCell>
+                 <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead className="text-right">Bans</TableHead>
+                                <TableHead className="text-right">Kicks</TableHead>
+                                <TableHead className="text-right">Warnings</TableHead>
+                                <TableHead className="text-right">Deletions</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((item) => (
+                                <MotionTableRow key={item.username} variants={rowVariants}>
+                                    <TableCell>{item.username}</TableCell>
+                                    <TableCell className="text-right">{item.total}</TableCell>
+                                    <TableCell className="text-right">{item.banned}</TableCell>
+                                    <TableCell className="text-right">{item.kicked}</TableCell>
+                                    <TableCell className="text-right">{item.warnings}</TableCell>
+                                    <TableCell className="text-right">{item.deletions}</TableCell>
+                                </MotionTableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                 </motion.div>
             </CardContent>
         </Card>
     )

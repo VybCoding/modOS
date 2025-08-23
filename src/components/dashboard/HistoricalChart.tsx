@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useAuth } from '@/components/auth-provider';
 import { useState, useEffect } from 'react';
 import { useSettings } from './SettingsProvider';
+import { motion } from 'framer-motion';
 
 const fetcher = async ([url, token]: [string, string]) => {
     const res = await fetch(url, {
@@ -33,21 +34,23 @@ export function HistoricalChart({ projectId }: { projectId: string }) {
   if (!data) return <div>Loading...</div>;
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip
-            contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                borderColor: 'hsl(var(--border))',
-            }}
-        />
-        <Legend />
-        <Line type="monotone" dataKey="newMembers" stroke="hsl(var(--primary))" name="New Members" />
-        <Line type="monotone" dataKey="moderationActions" stroke="hsl(var(--destructive))" name="Moderation Actions" />
-      </LineChart>
-    </ResponsiveContainer>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+        <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip
+                contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                }}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="newMembers" stroke="hsl(var(--primary))" name="New Members" />
+            <Line type="monotone" dataKey="moderationActions" stroke="hsl(var(--destructive))" name="Moderation Actions" />
+        </LineChart>
+        </ResponsiveContainer>
+    </motion.div>
   );
 }

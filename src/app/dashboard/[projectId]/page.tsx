@@ -14,6 +14,7 @@ import { Leaderboard } from '@/components/dashboard/Leaderboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SettingsProvider, useSettings } from '@/components/dashboard/SettingsProvider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { motion } from 'framer-motion';
 
 function TimeFrameSelector() {
     const { timeFrame, setTimeFrame } = useSettings();
@@ -31,6 +32,10 @@ function TimeFrameSelector() {
     )
 }
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 function Dashboard({ projectId }: { projectId: string }) {
     return (
@@ -45,61 +50,78 @@ function Dashboard({ projectId }: { projectId: string }) {
                 <TimeFrameSelector />
             </div>
             <TabsContent value="overview" className="space-y-4">
-                <div className="space-y-6">
-                    <StatCards projectId={projectId} />
-                    <Leaderboard projectId={projectId} isOverview />
+                <motion.div
+                    className="space-y-6"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        visible: { transition: { staggerChildren: 0.1 } }
+                    }}
+                >
+                    <motion.div variants={cardVariants}><StatCards projectId={projectId} /></motion.div>
+                    <motion.div variants={cardVariants}><Leaderboard projectId={projectId} isOverview /></motion.div>
+                    <motion.div variants={cardVariants}>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Activity Over Time</CardTitle>
+                                <CardDescription>
+                                    A summary of new members and moderation actions over the last 30 days.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <HistoricalChart projectId={projectId} />
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                    <motion.div variants={cardVariants}>
+                        <Card>
+                            <CardHeader>
+                            <CardTitle>Activity Feed</CardTitle>
+                            <CardDescription>
+                                A live feed of the most recent moderation actions taken by the bot.
+                            </Description>
+                            </CardHeader>
+                            <CardContent>
+                            <ActivityFeed projectId={projectId} />
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                </motion.div>
+            </TabsContent>
+            <TabsContent value="leaderboards" className="space-y-4">
+                 <motion.div initial="hidden" animate="visible" variants={cardVariants}>
+                    <Leaderboard projectId={projectId} />
+                 </motion.div>
+            </TabsContent>
+            <TabsContent value="reports">
+                <motion.div initial="hidden" animate="visible" variants={cardVariants}>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Activity Over Time</CardTitle>
+                            <CardTitle>User Reports</CardTitle>
                             <CardDescription>
-                                A summary of new members and moderation actions over the last 30 days.
+                                Coming soon: Detailed reports for individual users.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <HistoricalChart projectId={projectId} />
+                            <p>This section is under construction.</p>
                         </CardContent>
                     </Card>
-                    <Card>
-                        <CardHeader>
-                        <CardTitle>Activity Feed</CardTitle>
-                        <CardDescription>
-                            A live feed of the most recent moderation actions taken by the bot.
-                        </Description>
-                        </CardHeader>
-                        <CardContent>
-                        <ActivityFeed projectId={projectId} />
-                        </CardContent>
-                    </Card>
-                </div>
-            </TabsContent>
-            <TabsContent value="leaderboards" className="space-y-4">
-                <Leaderboard projectId={projectId} />
-            </TabsContent>
-            <TabsContent value="reports">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>User Reports</CardTitle>
-                        <CardDescription>
-                            Coming soon: Detailed reports for individual users.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>This section is under construction.</p>
-                    </CardContent>
-                </Card>
+                </motion.div>
             </TabsContent>
             <TabsContent value="settings">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Reporting Settings</CardTitle>
-                        <CardDescription>
-                           Customize your reporting experience.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>This section is under construction, but you can already use the time frame selector in the top right.</p>
-                    </CardContent>
-                </Card>
+                 <motion.div initial="hidden" animate="visible" variants={cardVariants}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reporting Settings</CardTitle>
+                            <CardDescription>
+                               Customize your reporting experience.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p>This section is under construction, but you can already use the time frame selector in the top right.</p>
+                        </CardContent>
+                    </Card>
+                 </motion.div>
             </TabsContent>
         </Tabs>
     )
