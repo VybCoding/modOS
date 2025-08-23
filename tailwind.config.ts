@@ -43,6 +43,10 @@ const config = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          gradient: {
+            from: "hsl(var(--accent-gradient-from))",
+            to: "hsl(var(--accent-gradient-to))",
+          }
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -52,6 +56,9 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      fontFamily: {
+        sans: ["Satoshi", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
