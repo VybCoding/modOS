@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import useSWR from 'swr';
 import { useAuth } from '@/components/auth-provider';
 import { useState, useEffect } from 'react';
+import { useSettings } from './SettingsProvider';
 
 const fetcher = async ([url, token]: [string, string]) => {
     const res = await fetch(url, {
@@ -17,6 +18,7 @@ const fetcher = async ([url, token]: [string, string]) => {
 
 export function HistoricalChart({ projectId }: { projectId: string }) {
   const { user } = useAuth();
+  const { timeFrame } = useSettings();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function HistoricalChart({ projectId }: { projectId: string }) {
     }
   }, [user]);
 
-  const { data, error } = useSWR(token ? [`/api/projects/${projectId}/charts/activity-over-time`, token] : null, fetcher);
+  const { data, error } = useSWR(token ? [`/api/projects/${projectId}/charts/activity-over-time?timeFrame=${timeFrame}`, token] : null, fetcher);
 
   if (error) return <div>Failed to load chart</div>;
   if (!data) return <div>Loading...</div>;

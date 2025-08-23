@@ -3,8 +3,9 @@
 import useSWR from 'swr';
 import { useAuth } from '@/components/auth-provider';
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useSettings } from './SettingsProvider';
 
 const fetcher = async ([url, token]: [string, string]) => {
     const res = await fetch(url, {
@@ -16,7 +17,7 @@ const fetcher = async ([url, token]: [string, string]) => {
     return res.json();
 };
 
-function LeaderboardTable({ title, data }: { title: string, data: { username: string, count: number }[] }) {
+function SimpleLeaderboardTable({ title, data }: { title: string, data: { username: string, count: number }[] }) {
     return (
         <Card>
             <CardHeader>
@@ -44,9 +45,47 @@ function LeaderboardTable({ title, data }: { title: string, data: { username: st
     )
 }
 
+function ModeratorLeaderboardTable({ data }: { data: { username: string, total: number, banned: number, kicked: number, warnings: number, deletions: number }[] }) {
+    return (
+        <Card className="col-span-1 md:col-span-2">
+            <CardHeader>
+                <CardTitle>Top Moderators</CardTitle>
+                <CardDescription>By total moderation actions</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Bans</TableHead>
+                            <TableHead className="text-right">Kicks</TableHead>
+                            <TableHead className="text-right">Warnings</TableHead>
+                            <TableHead className="text-right">Deletions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {data.map((item) => (
+                            <TableRow key={item.username}>
+                                <TableCell>{item.username}</TableCell>
+                                <TableCell className="text-right">{item.total}</TableCell>
+                                <TableCell className="text-right">{item.banned}</TableCell>
+                                <TableCell className="text-right">{item.kicked}</TableCell>
+                                <TableCell className="text-right">{item.warnings}</TableCell>
+                                <TableCell className="text-right">{item.deletions}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
 
-export function Leaderboard({ projectId }: { projectId: string }) {
+
+export function Leaderboard({ projectId, isOverview }: { projectId: string, isOverview?: boolean }) {
   const { user } = useAuth();
+  const { timeFrame } = useSettings();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,34 +94,26 @@ export function Leaderboard({ projectId }: { projectId: string }) {
     }
   }, [user]);
 
-  const { data, error } = useSWR(token ? [`/api/projects/${projectId}/leaderboards`, token] : null, fetcher);
+  const { data, error } = useSWR(token ? [`/api/projects/${projectId}/leaderboards?timeFrame=${timeFrame}`, token] : null, fetcher);
 
   if (error) return <div>Failed to load leaderboards</div>;
-  if (!data) return (
-    <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-            <CardHeader>
-                <CardTitle>Top Moderators</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div>Loading...</div>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Top Warned Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div>Loading...</div>
-            </CardContent>
-        </Card>
-    </div>
-  )
+  if (!data) return <div>Loading...</div>;
+
+  if (isOverview) {
+      return (
+        <div className="grid gap-4 md:grid-cols-2">
+            <SimpleLeaderboardTable title="Top Moderators" data={data.topModerators.map((d: any) => ({username: d.username, count: d.total}))} />
+            <SimpleLeaderboardTable title="Top Warned Users" data={data.topWarnedUsers} />
+        </div>
+      )
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-        <LeaderboardTable title="Top Moderators" data={data.topModerators} />
-        <LeaderboardTable title="Top Warned Users" data={data.topWarnedUsers} />
+        <ModeratorLeaderboardTable data={data.topModerators} />
+        <SimpleLeaderboardTable title="Top Banned Users" data={data.topBannedUsers} />
+        <SimpleLeaderboardTable title="Top Kicked Users" data={data.topKickedUsers} />
+        <SimpleLeaderboardTable title="Top Warned Users" data={data.topWarnedUsers} />
     </div>
   );
 }

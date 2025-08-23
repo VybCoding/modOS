@@ -16,6 +16,7 @@ export type ActivityLog = {
   eventType:
     | 'MEMBER_VERIFIED'
     | 'USER_BANNED'
+    | 'USER_KICKED'
     | 'MESSAGE_DELETED'
     | 'WARNING_ISSUED';
   actorUid: string;

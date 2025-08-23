@@ -23,21 +23,23 @@ export async function GET(request: Request, { params }: { params: { projectId: s
     await initializeFirebaseAdmin();
     const db = getFirestore();
     const { projectId } = params;
+    const { searchParams } = new URL(request.url);
+    const timeFrame = searchParams.get('timeFrame') || '30d';
 
-    const thirtyDaysAgo = subDays(new Date(), 30);
-    const thirtyDaysAgoTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+    const days = parseInt(timeFrame.replace('d', ''));
+    const startDate = subDays(new Date(), days);
+    const startDateTimestamp = Timestamp.fromDate(startDate);
 
     const activityLogsRef = db.collection('activity_logs');
     const q = activityLogsRef
       .where('projectId', '==', projectId)
-      .where('timestamp', '>=', thirtyDaysAgoTimestamp);
+      .where('timestamp', '>=', startDateTimestamp);
 
     const snapshot = await q.get();
 
     const dailyData: { [key: string]: { date: string; newMembers: number; moderationActions: number } } = {};
 
-    // Initialize data for the last 30 days
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < days; i++) {
         const date = startOfDay(subDays(new Date(), i));
         const formattedDateKey = format(date, 'yyyy-MM-dd');
         dailyData[formattedDateKey] = {
@@ -49,13 +51,12 @@ export async function GET(request: Request, { params }: { params: { projectId: s
 
     snapshot.docs.forEach(doc => {
       const log = doc.data();
-      const dateKey = format(log.timestamp.toDate(), 'yyyy-M-d');
       const formattedDateKey = format(startOfDay(log.timestamp.toDate()), 'yyyy-MM-dd');
 
       if (dailyData[formattedDateKey]) {
           if (log.eventType === 'MEMBER_VERIFIED') {
             dailyData[formattedDateKey].newMembers++;
-          } else if (['USER_BANNED', 'MESSAGE_DELETED', 'WARNING_ISSUED'].includes(log.eventType)) {
+          } else if (['USER_BANNED', 'MESSAGE_DELETED', 'WARNING_ISSUED', 'USER_KICKED'].includes(log.eventType)) {
             dailyData[formattedDateKey].moderationActions++;
           }
       }
