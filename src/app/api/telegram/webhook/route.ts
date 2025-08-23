@@ -533,6 +533,28 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             return; // Command handled
         }
 
+        if (isCommand(text, '/leaderboard')) {
+            if (!ctx.projectId) {
+                await sendAndDelete(bot, ctx.chatId, "This group is not part of a project, so the leveling system is disabled.", 15);
+                return;
+            }
+            const leaderboard = await db.getLeaderboard(ctx.projectId);
+
+            if (!leaderboard || leaderboard.length === 0) {
+                await sendAndDelete(bot, ctx.chatId, "The leaderboard is empty. Start chatting to get on the board!", 20);
+                return;
+            }
+
+            const top10 = leaderboard.slice(0, 10);
+            let response = '🏆 *Top 10 Users* 🏆\n\n';
+            top10.forEach((user, index) => {
+                response += `${index + 1}. @${user.username || 'Anonymous'} - Level ${user.level} (${Math.floor(user.xp)} XP)\n`;
+            });
+
+            await bot.sendMessage(ctx.chatId, response, { parse_mode: 'Markdown' });
+            return; // Command handled
+        }
+
 
         // --- 2. Handle /start command in private chat ---
         if (isCommand(text, '/start') && ctx.isPrivateChat) {
