@@ -8,19 +8,20 @@ export type User = {
   warnings?: number;
 };
 
-export type Log = {
-  id: string;
-  type:
-    | 'join'
-    | 'verified'
-    | 'failed'
-    | 'kicked'
-    | 'banned'
-    | 'admin_verify'
-    | 'warn'
-    | 'blacklist-delete';
-  message: string;
-  timestamp: Date;
+import { Timestamp } from 'firebase/firestore';
+
+export type ActivityLog = {
+  id?: string; // Firestore document ID
+  timestamp: Timestamp;
+  eventType:
+    | 'MEMBER_VERIFIED'
+    | 'USER_BANNED'
+    | 'MESSAGE_DELETED'
+    | 'WARNING_ISSUED';
+  actorUid: string;
+  targetUserId: string;
+  projectId: string;
+  [key: string]: any; // Allow for other properties
 };
 
 export type StatCard = {
