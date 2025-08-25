@@ -1,0 +1,32 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+
+# Production-only settings. These are ignored in the local development server.
+runConfig:
+  # These are the PUBLIC environment variables for the frontend
+  env:
+    - variable: NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+      value: 'modOS_VYBot'
+    - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+      value: 'AIzaSyARKsVAZoA8FI54CdSp91yyqIy7YLqgLPI'
+    - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+      value: 'deekfi-guardian.firebaseapp.com'
+    - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      value: 'deekfi-guardian'
+    - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      value: 'deekfi-guardian.firebasestorage.app'
+    - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+      value: '353661846046'
+    - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+      value: '1:353661846046:web:17e7421881b1bb38cba40f'
+
+  # These are BACKEND secrets securely referenced from Secret Manager
+  # The `secret` value must exactly match the name you created in Secret Manager.
+  secretEnv:
+  - secret: "TG_BOT_TOKEN"
+    env: "TG_BOT_TOKEN"
+  - secret: "modos-service-account-key"
+    env: NAME_OF_VARIABLE_IN_CODE
+
+# Allow public, unauthenticated traffic to the web app
+ingress: all

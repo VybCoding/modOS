@@ -1,0 +1,12 @@
+# Dependencies
+/node_modules
+
+# Next.js build output
+/.next/
+
+# Firebase build output and cache
+/.firebase/
+
+# Local environment files
+.env.local
+.env*.local

@@ -1,0 +1,15 @@
+diff --git a/node_modules/genkit/package.json b/node_modules/genkit/package.json
+index f791e84..62cb64f 100644
+--- a/node_modules/genkit/package.json
++++ b/node_modules/genkit/package.json
+@@ -47,5 +47,8 @@
+     "tsx": "^4.7.1",
+     "typescript": "~5.3.3",
+     "zod": "^3.22.4"
+-  }
++  },
++  "browser": {
++    "./lib/telemetry/opentelemetry.js": false
++  },
++  "react-native": {}
+ }

@@ -1,0 +1,47 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the requesting user is an admin of a specific project.
+    // It assumes a project document has an 'admins' array field containing user UIDs.
+    function isProjectAdmin(projectId) {
+      // Ensure the user is authenticated before checking for admin status.
+      return request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.admins.hasAny([request.auth.uid]);
+    }
+
+    // Projects can only be read or written to by an authenticated admin of that project.
+    match /projects/{projectId} {
+      allow read, write: if isProjectAdmin(projectId);
+
+      // Secure all subcollections based on the parent project's admin status.
+      // This is a powerful rule that cascades security down to all related data.
+      match /{allSubcollections}/{docId} {
+        allow read, write: if isProjectAdmin(projectId);
+      }
+    }
+
+    // Lock down collections that should only be accessed by the trusted backend server.
+    // The server uses Admin SDKs which bypass these security rules.
+    match /groups/{groupId} {
+      allow read, write: if false;
+    }
+
+    match /user_sessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    match /group_locks/{lockId} {
+      allow read, write: if false;
+    }
+
+    match /moderation_logs/{logId} {
+      // For the dashboard activity feed, allow admins to read logs for their project.
+      // Writes should only come from the backend.
+      allow get: if isProjectAdmin(resource.data.projectId);
+      allow list: if isProjectAdmin(request.query.projectId); // Allows querying by projectId
+      allow write: if false;
+    }
+  }
+}
