@@ -7,10 +7,14 @@ import * as db from '@/lib/database';
 import * as logger from '@/lib/datalogger';
 import { getBot } from '@/lib/telegram';
 import { sendAndDelete } from '@/lib/bot-utils';
+import { FieldValue } from 'firebase-admin/firestore';
 
 
 const MAX_RETRIES = 2; // Default, can be overridden by settings
 const EMOJI_OPTIONS = ['✅', '🤖', '🎉', '👍', '🔥', '🤔', '😎', '🚀'];
+const LEVEL_UP_GIF_URL = 'https://i.imgur.com/mr3lFVe.gif'; // Placeholder
+
+const requiredXpForNextLevel = (level: number) => 150 * Math.pow(level, 1.5);
 
 
 // --- NEW: Request Context ---
@@ -495,6 +499,63 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
             return; // Important: End execution here if we handled a session action
         }
 
+        if (isCommand(text, '/level')) {
+            if (!ctx.projectId) {
+                await sendAndDelete(bot, ctx.chatId, "This group is not part of a project, so the leveling system is disabled.", 15);
+                return;
+            }
+            const projectUser = await db.getProjectUser(ctx.projectId, ctx.userId);
+
+            if (!projectUser || projectUser.xp === 0) {
+                await sendAndDelete(bot, ctx.chatId, `Hey @${from.username || from.first_name}, you haven't earned any XP yet. Keep chatting to level up!`, 20);
+                return;
+            }
+
+            const { level, xp } = projectUser;
+            const nextLevelXp = Math.floor(requiredXpForNextLevel(level));
+            const prevLevelXp = level > 1 ? Math.floor(requiredXpForNextLevel(level - 1)) : 0;
+
+            const xpForLevel = nextLevelXp - prevLevelXp;
+            const xpProgress = xp - prevLevelXp;
+            const percentage = xpForLevel > 0 ? Math.floor((xpProgress / xpForLevel) * 100) : 100;
+
+            const progressBarLength = 10;
+            const filledBlocks = Math.round((percentage / 100) * progressBarLength);
+            const emptyBlocks = progressBarLength - filledBlocks;
+            const progressBar = '█'.repeat(filledBlocks) + '─'.repeat(emptyBlocks);
+
+            const response = `@${from.username || from.first_name}'s Progress\n` +
+                            `- Level: ${level}\n` +
+                            `- XP: ${Math.floor(xp)} / ${nextLevelXp}\n` +
+                            `- Progress: [${progressBar}] ${percentage}%`;
+
+            await bot.sendMessage(ctx.chatId, response);
+            return; // Command handled
+        }
+
+        if (isCommand(text, '/leaderboard')) {
+            if (!ctx.projectId) {
+                await sendAndDelete(bot, ctx.chatId, "This group is not part of a project, so the leveling system is disabled.", 15);
+                return;
+            }
+            const leaderboard = await db.getLeaderboard(ctx.projectId);
+
+            if (!leaderboard || leaderboard.length === 0) {
+                await sendAndDelete(bot, ctx.chatId, "The leaderboard is empty. Start chatting to get on the board!", 20);
+                return;
+            }
+
+            const top10 = leaderboard.slice(0, 10);
+            let response = '🏆 *Top 10 Users* 🏆\n\n';
+            top10.forEach((user, index) => {
+                response += `${index + 1}. @${user.username || 'Anonymous'} - Level ${user.level} (${Math.floor(user.xp)} XP)\n`;
+            });
+
+            await bot.sendMessage(ctx.chatId, response, { parse_mode: 'Markdown' });
+            return; // Command handled
+        }
+
+
         // --- 2. Handle /start command in private chat ---
         if (isCommand(text, '/start') && ctx.isPrivateChat) {
             
@@ -711,6 +772,51 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 }
                 return;
             }
+
+            if (text.startsWith('+') || text.startsWith('-')) {
+                if (!targetUser) {
+                    return sendAndDelete(bot, ctx.chatId, 'Please reply to a user to modify their XP.', 10);
+                }
+                if (!ctx.projectId) {
+                     return sendAndDelete(bot, ctx.chatId, 'This command is not available in a group without a project.', 10);
+                }
+
+                const isAdding = text.startsWith('+');
+                const char = isAdding ? '+' : '-';
+                const count = text.split(char).length - 1;
+                const percentage = count * 0.1;
+
+                if (count > 10) {
+                    return sendAndDelete(bot, ctx.chatId, 'You can only modify XP by a maximum of 100% at a time (10 characters).', 15);
+                }
+
+                const projectUser = await db.getProjectUser(ctx.projectId, targetUser.id);
+                if (!projectUser) {
+                    return sendAndDelete(bot, ctx.chatId, `User @${targetUser.username || targetUser.first_name} has no XP record.`, 15);
+                }
+
+                const currentLevelXp = requiredXpForNextLevel(projectUser.level - 1);
+                const xpForLevel = requiredXpForNextLevel(projectUser.level) - currentLevelXp;
+                const xpChange = Math.floor(xpForLevel * percentage);
+                const finalXpChange = isAdding ? xpChange : -xpChange;
+
+                const newXp = Math.max(0, projectUser.xp + finalXpChange);
+
+                // Check for level changes
+                let newLevel = projectUser.level;
+                while (newXp >= requiredXpForNextLevel(newLevel)) {
+                    newLevel++;
+                }
+                while (newXp < requiredXpForNextLevel(newLevel - 1) && newLevel > 1) {
+                    newLevel--;
+                }
+
+                await db.updateProjectUser(ctx.projectId, targetUser.id, { xp: newXp, level: newLevel });
+
+                const actionText = isAdding ? 'increased' : 'decreased';
+                await sendAndDelete(bot, ctx.chatId, `✅ XP for @${targetUser.username || targetUser.first_name} has been ${actionText} by ${xpChange}. New XP: ${Math.floor(newXp)}, Level: ${newLevel}.`, 20);
+                return;
+            }
         }
         
         // --- 6. Handle non-admin messages (e.g., blacklist check) ---
@@ -753,6 +859,52 @@ async function handleMessage(bot: TelegramBot, message: TelegramBot.Message, ctx
                 }
             }
         }
+
+        // --- 7. Handle XP and Leveling ---
+        if (!isAdmin && !text.startsWith('/') && ctx.projectId) {
+            const projectUser = await db.getProjectUser(ctx.projectId, ctx.userId) || {
+                xp: 0,
+                level: 1,
+                messageCount: 0,
+                lastMessageTimestamp: new Date(0),
+            };
+
+            const now = new Date();
+            const lastMessageTime = (projectUser.lastMessageTimestamp as any).toDate?.() || new Date(0);
+            const cooldown = 60 * 1000; // 60 seconds
+
+            if (now.getTime() - lastMessageTime.getTime() > cooldown) {
+                const xpGained = Math.floor(Math.random() * (25 - 15 + 1)) + 15;
+                const newXp = (projectUser.xp || 0) + xpGained;
+                let newLevel = projectUser.level || 1;
+                let leveledUp = false;
+
+                const requiredXp = requiredXpForNextLevel(newLevel);
+                if (newXp >= requiredXp) {
+                    newLevel++;
+                    leveledUp = true;
+                }
+
+                await db.updateProjectUser(ctx.projectId, ctx.userId, {
+                    xp: newXp,
+                    level: newLevel,
+                    messageCount: (projectUser.messageCount || 0) + 1,
+                    lastMessageTimestamp: FieldValue.serverTimestamp(),
+                    username: from.username,
+                    firstName: from.first_name,
+                    lastName: from.last_name,
+                });
+
+                if (leveledUp) {
+                    const congratulationsMessage = `🎉 Congratulations @${from.username || from.first_name}, you have reached Level ${newLevel}!`;
+                    const sentMessage = await bot.sendAnimation(ctx.chatId, LEVEL_UP_GIF_URL, { caption: congratulationsMessage });
+                    setTimeout(() => {
+                        bot.deleteMessage(ctx.chatId, sentMessage.message_id).catch(() => {});
+                    }, 30000); // Auto-delete after 30 seconds
+                }
+            }
+        }
+
 
     } catch (error) {
         console.error(JSON.stringify({

@@ -4,6 +4,7 @@
  */
 import { getDb } from './services';
 import { FieldValue } from 'firebase-admin/firestore';
+import { ProjectUser } from './xp-types';
 
 
 // --- TYPES ---
@@ -98,6 +99,16 @@ export async function isUserAdminOfAnyProject(userId: number): Promise<boolean> 
     return !snapshot.empty;
 }
 
+export async function getProjectsForUser(userId: number): Promise<{ id: string, name: string }[]> {
+    const projectsCol = getCollection('projects');
+    const snapshot = await projectsCol.where('admins', 'array-contains', userId).get();
+    if (snapshot.empty) return [];
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().projectName,
+    }));
+}
+
 export async function getProjectByChatId(chatId: string): Promise<string | undefined> {
     const groupsCol = getCollection('groups');
     const snapshot = await groupsCol.where('chatId', '==', Number(chatId)).limit(1).get();
@@ -185,6 +196,35 @@ export async function getEffectiveSettings(projectId: string, chatId: number): P
     const groupOverrides = await getGroupSettingOverride(chatId);
 
     return { ...projectSettings, ...groupOverrides };
+}
+
+// --- XP & LEVELING FUNCTIONS ---
+
+export async function getProjectUser(projectId: string, userId: number): Promise<ProjectUser | undefined> {
+    const projectUsersCol = getCollection('project_users');
+    const doc = await projectUsersCol.doc(`${projectId}_${userId}`).get();
+    if (!doc.exists) return undefined;
+    return doc.data() as ProjectUser;
+}
+
+export async function updateProjectUser(
+    projectId: string,
+    userId: number,
+    data: Partial<ProjectUser>
+): Promise<void> {
+    const projectUsersCol = getCollection('project_users');
+    const userRef = projectUsersCol.doc(`${projectId}_${userId}`);
+    await userRef.set(data, { merge: true });
+}
+
+export async function getLeaderboard(projectId: string): Promise<ProjectUser[]> {
+    const projectUsersCol = getCollection('project_users');
+    const query = projectUsersCol
+        .where('projectId', '==', projectId)
+        .orderBy('xp', 'desc')
+        .limit(100);
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => doc.data() as ProjectUser);
 }
 
 // --- USER SESSION & VERIFICATION FUNCTIONS ---
